@@ -20,31 +20,30 @@
 void signalExtraction(bool ispO=true, bool isMC =false, const char *caseName = "nominal", bool remakeDS =false, bool fitMass=true, bool fitTauz=false);
 void plotResult(const char *caseName = "nominal", string axisName = "pt", int incMinCent=0, int incMaxCent=100, float incMinPt=0., float incMaxPt=50., float incMinRap=-3.5, float incMaxRap=-2.5, float incMinChi2=0, float incMaxChi2=50);
 
-void InputToResults(bool justPlot = false, bool ispO=false, bool isMC=false, const char *caseName = "nominal") {
+void InputToResults(bool plotResults = false, bool ispO=false, bool isMC=false, const char *caseName = "nominal", bool remakeDS = false, bool fitMass1D=false, bool fitTauz1D=false, bool fit2D=true) {
   gSystem->Load("RooExtCBShape.cxx+");
-  bool remakeDS = false;
-  cout<<"justPlot = "<<justPlot<<endl;
-  //signalExtraction(ispO, isMC, caseName, remakeDS, true, false);
-  //signalExtraction(ispO, isMC, caseName, remakeDS, false, true);
-  signalExtraction(ispO, isMC, caseName, remakeDS, true, true);
+  //cout<<"plotResults = "<<plotResults<<endl;
+  if (fitMass1D)
+    signalExtraction(ispO, isMC, caseName, remakeDS, true, false);
+  else if (fitTauz1D)
+    signalExtraction(ispO, isMC, caseName, remakeDS, false, true);
+  else if (fit2D)
+    signalExtraction(ispO, isMC, caseName, remakeDS, true, true);
   
-  /*
-  if (!justPlot) { signalExtraction(ispO, isMC, caseName, true, true, false);
-    signalExtraction(ispO, isMC, caseName, false, false, true);
-    signalExtraction(ispO, isMC, caseName, false, true, true);
-    }
+
+  if (plotResults) {
+    int minCent = 0;
+    int maxCent = 100;
+    float minPt = 0.;
+    float maxPt = 20.;
+    float minRap = -3.5;
+    float maxRap = -2.6;
+    float minChi2 = 0;
+    float maxChi2 = 50;
+    string axisName = "pt";
+    plotResult(caseName, axisName.c_str(), minCent, maxCent, minPt, maxPt, minRap, maxRap, minChi2, maxChi2);
+  }
   
-  int minCent = 0;
-  int maxCent = 100;
-  float minPt = 0.;
-  float maxPt = 20.;
-  float minRap = -3.5;
-  float maxRap = -2.6;
-  float minChi2 = 0;
-  float maxChi2 = 50;
-  string axisName = "pt";
-  plotResult(caseName, axisName.c_str(), minCent, maxCent, minPt, maxPt, minRap, maxRap, minChi2, maxChi2);
-  */
 }
 
 void signalExtraction(bool ispO, bool isMC, const char *caseName, bool remakeDS, bool fitMass, bool fitTauz) {
@@ -113,19 +112,21 @@ void signalExtraction(bool ispO, bool isMC, const char *caseName, bool remakeDS,
 				  (int) cutVector[j].chi2.Min,
 				  (int) cutVector[j].chi2.Max);
 
-    /*
-    string dsCuts = Form("pt > %f && pt < %f && y > %f && y < %f && chi2_1< %f && chi2_2< %f",
+
+    string dsCuts = Form("pt > %f && pt < %f && y > %f && y < %f && chi2_1 > %f && chi2_1 < %f && chi2_2 > %f && chi2_2 < %f && sign == 0",
 			 cutVector[j].pt.Min,
 			 cutVector[j].pt.Max,
-			 -1000.,//cutVector[j].rap.Min,
-			 1000.,//cutVector[j].rap.Max,
+			 -1*cutVector[j].rap.Max,
+			 -1*cutVector[j].rap.Min,
+			 cutVector[j].chi2.Min,
+			 cutVector[j].chi2.Max,
 			 cutVector[j].chi2.Min,
 			 cutVector[j].chi2.Max);
 			 // don't forget the SS cut
-    */
+    /*
     string dsCuts = Form("pt > %f && pt < %f",
 			 cutVector[j].pt.Min,
-			 cutVector[j].pt.Max);
+			 cutVector[j].pt.Max);*/
     cout<<"cutting on "<<dsCuts<<endl;
     
     RooWorkspace* ws = new RooWorkspace(Form("ws_fit%s%s_%s", fitMass?"Mass":"", fitTauz?"Tauz":"", rangeLabel.c_str()));

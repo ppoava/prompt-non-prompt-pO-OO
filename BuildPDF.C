@@ -135,6 +135,22 @@ void buildPDF_tauzRes(RooWorkspace* ws, map<string, string> parIni){
 
     ws->factory("RooAddModel::tauzResModel({gauss0, gauss1, gauss2},{fGaus0_tauzRes, fGaus1_tauzRes})");
   }
+
+    else if (parIni["model_tauzRes"]=="Gauss4") {
+    ws->factory("Gaussian::gauss0_tauzRes(tauz, mean_tauzRes, sigma0_tauzRes)");
+    ws->factory("Gaussian::gauss1_tauzRes(tauz, mean_tauzRes, sigma1_tauzRes)");
+    ws->factory("Gaussian::gauss2_tauzRes(tauz, mean_tauzRes, sigma2_tauzRes)");
+    ws->factory("Gaussian::gauss3_tauzRes(tauz, mean_tauzRes, sigma3_tauzRes)");
+    ws->factory("SUM::tauzResPDF(fGaus0_tauzRes*gauss0_tauzRes, fGaus1_tauzRes*gauss1_tauzRes, fGaus2_tauzRes*gauss2_tauzRes, fGaus3_tauzRes*gauss3_tauzRes)");
+
+    
+    ws->factory("RooGaussModel::gauss0(tauz, mean_tauzRes, sigma0_tauzRes)");
+    ws->factory("RooGaussModel::gauss1(tauz, mean_tauzRes, sigma1_tauzRes)");
+    ws->factory("RooGaussModel::gauss2(tauz, mean_tauzRes, sigma2_tauzRes)");
+    ws->factory("RooGaussModel::gauss3(tauz, mean_tauzRes, sigma3_tauzRes)");
+
+    ws->factory("RooAddModel::tauzResModel({gauss0, gauss1, gauss2, gauss3},{fGaus0_tauzRes, fGaus1_tauzRes, fGaus2_tauzRes})");
+  }
 }
 void buildPDF_tauzBkg(RooWorkspace* ws, map<string, string> parIni){
   if (parIni["modelNpr_tauzBkg"]=="TripleDecay"){
@@ -217,9 +233,11 @@ void setDefaultParameters(map<string, string>& parIni, double nEntriesDS){
   varMap["sigma0_tauzRes"] = {0.00045,0.0002,0.0010};
   varMap["sigma1_tauzRes"] = {0.00045,0.0002,0.0010};
   varMap["sigma2_tauzRes"] = {0.00045,0.0002,0.0010};
+  varMap["sigma3_tauzRes"] = {0.00045,0.0002,0.0030};
   varMap["fGaus0_tauzRes"] = {0.3, 0, 1};
   varMap["fGaus1_tauzRes"] = {0.06, 0, 1};
   varMap["fGaus2_tauzRes"] = {0.05, 0, 1};
+  varMap["fGaus3_tauzRes"] = {0.05, 0, 1};
     
   varMap["fb_tauzSig"] = {0.2, 0, 1};
   varMap["lambdaDssNpr_tauzSig"] = {1., 0.01, 2.0};
@@ -276,7 +294,7 @@ void fixParPDF(RooWorkspace* ws, RooFitResult* fitResult, map<string, string> &p
       fixedPars.push_back("alpha_tauzRes");
       fixedPars.push_back("n_tauzRes");
     }
-    else if (parIni["model_tauzRes"]=="Gauss3") {
+    else if (parIni["model_tauzRes"]=="Gauss3" || parIni["model_tauzRes"]=="Gauss4") {
       //RooRealVar* sigma0_free_tauzRes = (RooRealVar*) ws->var("sigma0_tauzRes");
       //ws->import(*sigma0_free_tauzRes, Rename("sigma0_free_tauzRes"));
       
@@ -286,6 +304,10 @@ void fixParPDF(RooWorkspace* ws, RooFitResult* fitResult, map<string, string> &p
       fixedPars.push_back("fGaus0_tauzRes");
       fixedPars.push_back("fGaus1_tauzRes");
       fixedPars.push_back("fGaus2_tauzRes");
+      if (parIni["model_tauzRes"]=="Gauss4") {
+	fixedPars.push_back("sigma3_tauzRes");
+	fixedPars.push_back("fGaus3_tauzRes");
+      }
       for (const auto& par : fixedPars) {
 	RooRealVar* freePar = (RooRealVar*) ws->var(par);
 	if (!freePar) {

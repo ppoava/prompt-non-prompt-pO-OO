@@ -50,15 +50,19 @@ string varFancyLabel(string varLabel="") {
   fancyLabels["sigma0_tauzRes"] = "#sigma_{0}^{#tau_{z}}";
   fancyLabels["sigma1_tauzRes"] = "#sigma_{1}^{#tau_{z}}";
   fancyLabels["sigma2_tauzRes"] = "#sigma_{2}^{#tau_{z}}";
+  fancyLabels["sigma3_tauzRes"] = "#sigma_{3}^{#tau_{z}}";
   fancyLabels["free_sigma0_tauzRes"] = "#sigma_{0}^{#tau_{z}}";
   fancyLabels["free_sigma1_tauzRes"] = "#sigma_{1}^{#tau_{z}}";
-    fancyLabels["free_sigma2_tauzRes"] = "#sigma_{2}^{#tau_{z}}";
+  fancyLabels["free_sigma2_tauzRes"] = "#sigma_{2}^{#tau_{z}}";
+  fancyLabels["free_sigma3_tauzRes"] = "#sigma_{3}^{#tau_{z}}";
   fancyLabels["fGaus0_tauzRes"] = "f^{gaus}_{0}";
   fancyLabels["fGaus1_tauzRes"] = "f^{gaus}_{1}";
   fancyLabels["fGaus2_tauzRes"] = "f^{gaus}_{2}";
+  fancyLabels["fGaus3_tauzRes"] = "f^{gaus}_{3}";
   fancyLabels["free_fGaus0_tauzRes"] = "f^{gaus}_{0}";
   fancyLabels["free_fGaus1_tauzRes"] = "f^{gaus}_{1}";
   fancyLabels["free_fGaus2_tauzRes"] = "f^{gaus}_{2}";
+  fancyLabels["free_fGaus3_tauzRes"] = "f^{gaus}_{3}";
   fancyLabels["fb_tauzSig"] = "f_{b}^{Sig}";
   fancyLabels["fDfssNpr_tauzBkg"] = "f_{dfss}";
   fancyLabels["fDNpr_tauzBkg"] = "f_{d}";
@@ -108,15 +112,16 @@ void fixFrameStyle(RooPlot* distFrame, bool setLog){
     distFrame->GetYaxis()->SetRangeUser(0, 1.8*distFrame->GetMaximum());
 }
 void fixPullStyle(RooPlot* pullFrame){
+  pullFrame->SetTitle(" ");
   pullFrame->GetYaxis()->SetTitle("(Data-Fit)/#sigma");
   pullFrame->SetMinimum(-5);
   pullFrame->SetMaximum(5);
-  pullFrame->GetXaxis()->SetTitleSize(0.1);
-  pullFrame->GetYaxis()->SetTitleSize(0.08);
+  pullFrame->GetXaxis()->SetTitleSize(0.12);
+  pullFrame->GetYaxis()->SetTitleSize(0.1);
   pullFrame->GetXaxis()->SetLabelSize(0.10);
   pullFrame->GetYaxis()->SetLabelSize(0.08);
   pullFrame->GetYaxis()->SetNdivisions(505);
-  pullFrame->GetYaxis()->SetTitleOffset(0.5);
+  pullFrame->GetYaxis()->SetTitleOffset(0.4);
   pullFrame->GetXaxis()->SetTitleOffset(1.);
   
   /*
@@ -162,7 +167,7 @@ TLatex *varLatex (RooWorkspace *ws, map<string, string> parIni, bool fitMass, bo
     if(it->first.find("fit")!=std::string::npos || it->first.find("model")!=std::string::npos) continue;
     if (ws->var(it->first.c_str())->isConstant()) continue;
     if (fitMass && fitTauz) {
-      if (!(it->first.find("_tauzMass")!=std::string::npos)) 
+      if (!(it->first.find("_tauzMass")!=std::string::npos || it->first.find("_tauzSig")!=std::string::npos)) //include the lambda for the tauz nonprompt
 	continue;
       
     }
@@ -179,13 +184,15 @@ TLatex *varLatex (RooWorkspace *ws, map<string, string> parIni, bool fitMass, bo
       
       else if (!(it->first.find("_tauzSig")!=std::string::npos)) continue; 
     }
+    if (it->first.find("si2s")!=std::string::npos) continue;
+    
     if (ws->var(it->first.c_str())->getError()==0) continue;
     cout<<"[INFO] writing variable "<<it->first.c_str()<<" = "<<endl;
     cout<<ws->var(it->first.c_str())->getValV()<<endl;
     cout<<" err = "<<ws->var(it->first.c_str())->getError()<<endl;
     
     textVar->DrawLatex(xText, yText, Form("%s = %g #pm  %g", varFancyLabel(it->first.c_str()).c_str(), ws->var(it->first.c_str())->getValV(), ws->var(it->first.c_str())->getError()));
-    yText = yText-0.035;
+    yText = yText-0.04;
   }
   return textVar;
 }
@@ -196,11 +203,11 @@ TLatex *cutLatex (bool ispO, struct KinCuts cutVector, float xText, float yText)
   textCut->SetTextAlign(12);
   textCut->SetTextFont(43);
   textCut->SetTextSize(20); // Size in pixel height
-  textCut->DrawLatex(xText, yText, Form("%g < p_{T} < %g", cutVector.pt.Min,cutVector.pt.Max)); yText = yText-0.035;
-  textCut->DrawLatex(xText, yText, Form("%g < y < %g", cutVector.rap.Min,cutVector.rap.Max)); yText = yText-0.035;
-  textCut->DrawLatex(xText, yText, Form("%g < #chi^{2}_{matching} < %g", cutVector.chi2.Min,cutVector.chi2.Max)); yText = yText-0.035;
+  textCut->DrawLatex(xText, yText, Form("%g < p_{T} < %g GeV", cutVector.pt.Min,cutVector.pt.Max)); yText = yText-0.04;
+  textCut->DrawLatex(xText, yText, Form("%g < y < %g", cutVector.rap.Min,cutVector.rap.Max)); yText = yText-0.04;
+  textCut->DrawLatex(xText, yText, Form("%g < #chi^{2}_{matching} < %g", cutVector.chi2.Min,cutVector.chi2.Max)); yText = yText-0.04;
   if (!ispO)
-    textCut->DrawLatex(xText, yText, Form("%d < cent < %d", cutVector.cent.Start ,cutVector.cent.End)); yText = yText-0.035;
+    textCut->DrawLatex(xText, yText, Form("%d < cent < %d %%", cutVector.cent.Start ,cutVector.cent.End)); yText = yText-0.04;
   
     return textCut;
 }

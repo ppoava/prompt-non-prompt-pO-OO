@@ -29,11 +29,9 @@
 #include <sstream>
 
 #include "BuildPDF.C"
-//#include "inputUtils.h"
 #include "plotUtils.h"
 
 
-//TH1 *GetCorrHisto(const char *filePattern, string rangeLabel);
 //___________________________________________________________________________________________________________
 //___________________________________________________________________________________________________________
 map<string, double> SignalExtraction1Fit(map<string, string>& parIni, RooWorkspace* ws, const char *caseName, string rangeLabel, bool ispO, bool isMC, bool fitMass, bool fitTauz, struct KinCuts cutVector) {
@@ -58,7 +56,7 @@ map<string, double> SignalExtraction1Fit(map<string, string>& parIni, RooWorkspa
     double xMaxRes = getMax(hist); //to get the mean of the resolution function
     ws->var("mean_tauzRes")->setVal(xMaxRes);
     ws->var("mean_tauzRes")->setConstant(kTRUE);
-    ws->var("tauz")->setRange("neg", -0.01, xMaxRes);
+    ws->var("tauz")->setRange("neg", ws->var("tauz")->getMin(), xMaxRes);
     RooDataSet* sPlotDsNeg = (RooDataSet*) ws->data("sPlotDsSig")->reduce(Form("tauz < %f", xMaxRes));
     ws->import(*sPlotDsNeg, RooFit::Rename("sPlotDsSigNeg"));
     
@@ -78,14 +76,17 @@ map<string, double> SignalExtraction1Fit(map<string, string>& parIni, RooWorkspa
 
   TCanvas* can = new TCanvas("can","",800,800);
   can->cd();
-  //TPad *padDist = new TPad("padDist","",0,.23,1,1);
-  //padDist->SetPad(0.0, 0.29, 1.0, 1.0);
-  //padDist->SetBottomMargin(0.02);
+  can->Divide(1, 2);
+  
+  TPad *padDist = (TPad*)can->cd(1);//new TPad("padDist","",0,.23,1,1);
+  padDist->SetPad(0.0, 0.24, 1.0, 1.0);
+  padDist->SetBottomMargin(0.02);
 
   //can->cd();
-  //TPad *padPull = new TPad("padPull","",0,0,1,.228);
-  //padPull->SetTopMargin(0.016);
-  //padPull->SetBottomMargin(0.3);
+  TPad *padPull = (TPad*)can->cd(2);//new TPad("padPull","",0,0,1,.228);
+  padPull->SetPad(0.0, 0.0, 1.0, 0.25);
+  padPull->SetTopMargin(0.016);
+  padPull->SetBottomMargin(0.3);
 
   map<string, vector<string>> legendEntries;
   
@@ -95,20 +96,20 @@ map<string, double> SignalExtraction1Fit(map<string, string>& parIni, RooWorkspa
   RooPlot* tauzBkgFrame = ws->var("tauz")->frame();
   
   if (fitMass && !fitTauz) {
-    
+    padDist->cd();  
     ws->data("data")->plotOn(massFrame, Name("data")); legendEntries["data"] = {"data","P"};
     ws->pdf("totPDF_mass")->plotOn(massFrame, Name("background_mass"), Components(RooArgSet(*ws->pdf("bkgPDF_mass"))),DrawOption("F"), FillColor(kGray), LineColor(kGray)); legendEntries["background_mass"] = {"Background", "F"};
+    ws->pdf("totPDF_mass")->plotOn(massFrame, Name("signalPsi2s_mass"), Components(RooArgSet(*ws->pdf("psi2sPDF_mass"))),DrawOption("L"), LineColor(kGreen+4)); //legendEntries["signalPsi2s_mass"] = {"#psi(2S) signal","L"};
     ws->pdf("totPDF_mass")->plotOn(massFrame, Name("signalJpsi_mass"), Components(RooArgSet(*ws->pdf("jpsiPDF_mass"))),DrawOption("L"), LineColor(kGreen+2)); legendEntries["signalJpsi_mass"] = {"J/#psi signal","L"};
-    ws->pdf("totPDF_mass")->plotOn(massFrame, Name("signalPsi2s_mass"), Components(RooArgSet(*ws->pdf("psi2sPDF_mass"))),DrawOption("L"), LineColor(kGreen+4)); legendEntries["signalPsi2s_mass"] = {"#psi(2S) signal","L"};
     ws->pdf("totPDF_mass")->plotOn(massFrame, Name("total_mass"), LineColor(kRed)); legendEntries["total_mass"] = {"total fit","L"};
+
+    RooHist *hpull = massFrame->pullHist();
+    RooPlot* pullFrame = ws->var("mass")->frame(Title("Pull Distribution"));
+    pullFrame->addPlotable(hpull,"P");
     
-    //RooHist *hpull = massFrame->pullHist();
-    //RooPlot* pullFrame = ws->var("mass")->frame(Title("Pull Distribution"));
-    //pullFrame->addPlotable(hpull,"P");
-    /*
-      int nPar = ws->pdf("totPDF_mass")->getParameters(*)->selectByAttrib("Constant",kFALSE)->getSize();
-      double chi2 = massframe->chiSquare(nPar);
-    */
+    //int nPar = ws->pdf("totPDF_mass")->getParameters(*)->selectByAttrib("Constant",kFALSE)->getSize();
+    //double chi2 = massframe->chiSquare(nPar);
+    
     
     ws->data("data")->plotOn(massFrame);
     //padDist->cd();
@@ -118,30 +119,36 @@ map<string, double> SignalExtraction1Fit(map<string, string>& parIni, RooWorkspa
     TLatex* textCut = cutLatex(ispO, cutVector, 0.25,0.6); textCut->Draw("same");
     TLegend* leg = makePlotLegend(massFrame, legendEntries, 0.25, 0.7, 0.5, 0.85); leg->Draw("same");
     TLatex *textAlice = AliceText(ispO); textAlice->Draw("same");
-    //padPull->cd();
-    //fixPullStyle(pullFrame);
-    //pullFrame->Draw();
-
+    padPull->cd();
+    fixPullStyle(pullFrame);
+    pullFrame->Draw();
+    TLine* linePull = new TLine(ws->var("mass")->getMin(), 0, ws->var("mass")->getMax(),0);
+    linePull->SetLineColor(kRed); linePull->SetLineStyle(2); linePull->Draw("same");
     //std::string pdfPath = "";
     can->SaveAs(Form("%s/massFit1D_%s.pdf", outDirName.c_str(), rangeLabel.c_str()));
   }
   else if (fitTauz && !fitMass) {
     //tauz resolution first
+    padDist->cd();
     ws->Print(); 
     ws->data("sPlotDsSigNeg")->plotOn(tauzResFrame, Name("sPlotDsSigNeg"), DataError(RooAbsData::SumW2)); legendEntries["sPlotDsSigNeg"] = {"sPlot signal-like data","P"};
+    int nGauss = 0;
+    //int gausColor[] = {kBlue, kGreen+2, kPink+4, kPink+4};
+    if (parIni["model_tauzRes"]=="Gauss3") nGauss = 3;
+    else if (parIni["model_tauzRes"]=="Gauss4") nGauss = 4;
+    for (int i=0; i<nGauss; i++) {
+      ws->pdf("tauzResPDF")->plotOn(tauzResFrame, Components(RooArgSet(*ws->pdf(Form("gauss%d_tauzRes", i)))), Name(Form("gauss%d_tauzRes", i)), LineColor(kBlue+i), LineStyle(2+i)); legendEntries[Form("gauss%d_tauzRes", i)] = {Form("gaussian %d", i),"L"};
+    } 
+    
     ws->pdf("tauzResPDF")->plotOn(tauzResFrame, Name("tauzResPDF"), LineColor(kRed)); legendEntries["tauzResPDF"] = {"total fit","L"};
-    ws->pdf("tauzResPDF")->plotOn(tauzResFrame, Components(RooArgSet(*ws->pdf("gauss0_tauzRes"))), Name("gauss0_tauzRes"), LineColor(kBlue)); legendEntries["gauss0_tauzRes"] = {"gaussian 0","L"};
-    ws->pdf("tauzResPDF")->plotOn(tauzResFrame, Components(RooArgSet(*ws->pdf("gauss1_tauzRes"))), Name("gauss1_tauzRes"), LineColor(kGreen+2)); legendEntries["gauss1_tauzRes"] = {"gaussian 1","L"};
-    ws->pdf("tauzResPDF")->plotOn(tauzResFrame, Components(RooArgSet(*ws->pdf("gauss2_tauzRes"))), Name("gauss2_tauzRes"), LineColor(kPink+4)); legendEntries["gauss2_tauzRes"] = {"gaussian 2","L"};
     
+    RooHist* hpull = tauzResFrame->pullHist();
+    RooPlot* pullFrame = ws->var("tauz")->frame(Title("Pull Distribution"));
+    pullFrame->addPlotable(hpull,"P");
     
-    //RooHist *hpull = tauzResFrame->pullHist();
-    //RooPlot* pullFrame = ws->var("tauz")->frame(Title("Pull Distribution"));
-    //pullFrame->addPlotable(hpull,"P");
-    
-     ws->data("sPlotDsSigNeg")->plotOn(tauzResFrame, DataError(RooAbsData::SumW2));
+    ws->data("sPlotDsSigNeg")->plotOn(tauzResFrame, DataError(RooAbsData::SumW2));
     //padDist->cd();
-     fixFrameStyle(tauzResFrame, true);
+    fixFrameStyle(tauzResFrame, true);
     tauzResFrame->Draw();
     TLatex* textVarRes = varLatex(ws, parIni, fitMass, fitTauz, 1, 0, 0.57, 0.85); textVarRes->Draw("same");
     TLatex* textCutRes = cutLatex(ispO, cutVector, 0.2, 0.8); textCutRes->Draw("same");
@@ -149,24 +156,26 @@ map<string, double> SignalExtraction1Fit(map<string, string>& parIni, RooWorkspa
 
     TLatex *textAlice = AliceText(ispO); //textAlice->Draw("same");
     
-    //padPull->cd();
-    //fixPullStyle(pullFrame);
-    //pullFrame->Draw();
-
+    padPull->cd();
+    fixPullStyle(pullFrame);
+    pullFrame->Draw();
+    TLine* linePull = new TLine(ws->var("tauz")->getMin(), 0, ws->var("tauz")->getMax(),0);
+    linePull->SetLineColor(kRed); linePull->SetLineStyle(2); linePull->Draw("same");
     //std::string pdfPath = "";
-    can->SetLogy();
+    padDist->SetLogy();
     can->SaveAs(Form("%s/tauzResFit1D_%s.pdf", outDirName.c_str(), rangeLabel.c_str()));
 
     //////// then tauz Bkg
+    padDist->cd();
     legendEntries.clear();
     ws->data("sPlotDsBkg")->plotOn(tauzBkgFrame, Name("sPlotDsBkg"), DataError(RooAbsData::SumW2)); legendEntries["sPlotDsBkg"] = {"sPlot background-like data","P"};
     ws->pdf("tauzBkgPDF")->plotOn(tauzBkgFrame, Name("tauzNprBkgPDF"), Components(RooArgSet(*ws->pdf("tauzNprBkgPDF"))),DrawOption("L"), LineColor(kBlue)); legendEntries["tauzNprBkgPDF"] = {"non-prompt-like", "L"};
     ws->pdf("tauzBkgPDF")->plotOn(tauzBkgFrame, Name("tauzPrBkgPDF"), Components(RooArgSet(*ws->pdf("tauzPrBkgPDF"))),DrawOption("L"), LineColor(kGreen+2)); legendEntries["tauzPrBkgPDF"] = {"prompt-like", "L"};
     ws->pdf("tauzBkgPDF")->plotOn(tauzBkgFrame, Name("tauzBkgPDF"), LineColor(kRed)); legendEntries["tauzBkgPDF"] = {"total fit","L"};
     
-    //hpull = tauzBkgFrame->pullHist();
-    //pullFrame = ws->var("tauz")->frame(Title("Pull Distribution"));
-    //pullFrame->addPlotable(hpull,"P");
+    RooHist* hpullBkg = tauzBkgFrame->pullHist();
+    RooPlot* pullBkgFrame = ws->var("tauz")->frame(Title("Pull Distribution"));
+    pullBkgFrame->addPlotable(hpullBkg,"P");
     
     ws->data("sPlotDsBkg")->plotOn(tauzBkgFrame, DataError(RooAbsData::SumW2));
     //padDist->cd();
@@ -178,18 +187,18 @@ map<string, double> SignalExtraction1Fit(map<string, string>& parIni, RooWorkspa
     TLatex *textAliceBkg = AliceText(ispO); //textAlice->Draw("same");
     
     
-    //textAlice->Draw("same");
-    
-    //padPull->cd();
-    //fixPullStyle(pullFrame);
-    //pullFrame->Draw();
-
+    padPull->cd();
+    fixPullStyle(pullBkgFrame);
+    pullBkgFrame->Draw();
+    TLine* linePullBkg = new TLine(ws->var("tauz")->getMin(), 0, ws->var("tauz")->getMax(),0);
+    linePullBkg->SetLineColor(kRed); linePullBkg->SetLineStyle(2); linePullBkg->Draw("same");
     //std::string pdfPath = "";
     //can->SetLogy();
     can->SaveAs(Form("%s/tauzBkgFit1D_%s.pdf", outDirName.c_str(), rangeLabel.c_str()));
     
   }
   else if (fitTauz && fitMass) {
+    padDist->cd();
     ws->data("data")->plotOn(massFrame, Name("data"), DataError(RooAbsData::SumW2)); legendEntries["data"] = {"data","P"};
     ws->pdf("totPDF_2D")->plotOn(massFrame, Name("background"), Components(RooArgSet(*ws->pdf("tauzMassTotBkgPDF"))),DrawOption("F"), FillColor(kGray), LineColor(kGray)); legendEntries["background"] = {"Background", "F"};
     ws->pdf("totPDF_2D")->plotOn(massFrame, Name("tauzMassPrJpsiPDF"), Components(RooArgSet(*ws->pdf("tauzMassPrJpsiPDF"))),DrawOption("L"), LineColor(kGreen+2)); legendEntries["tauzMassPrJpsiPDF"] = {"prompt J/#psi signal","L"};
@@ -198,9 +207,9 @@ map<string, double> SignalExtraction1Fit(map<string, string>& parIni, RooWorkspa
     //ws->pdf("totPDF_mass")->plotOn(massFrame, Name("tauzMassTotPsi2sPDF"), Components(RooArgSet(*ws->pdf("tauzMassTotPsi2sPDF"))),DrawOption("L"), LineColor(kBlue+4)); legendEntries["tauzMassTotPsi2sPDF"] = {"#psi(2S) signal","L"};
     ws->pdf("totPDF_2D")->plotOn(massFrame, Name("totPDF_2D"), LineColor(kRed)); legendEntries["totPDF_2D"] = {"total fit","L"};
     
-    //RooHist *hpull = massFrame->pullHist();
-    //RooPlot* pullFrame = ws->var("mass")->frame(Title("Pull Distribution"));
-    //pullFrame->addPlotable(hpull,"P");
+    RooHist* hpull = massFrame->pullHist();
+    RooPlot* pullFrame = ws->var("mass")->frame(Title("Pull Distribution"));
+    pullFrame->addPlotable(hpull,"P");
     
     ws->data("data")->plotOn(massFrame, DataError(RooAbsData::SumW2));
     //padDist->cd();
@@ -211,14 +220,17 @@ map<string, double> SignalExtraction1Fit(map<string, string>& parIni, RooWorkspa
     TLegend* leg = makePlotLegend(massFrame, legendEntries, 0.15, 0.7, 0.5, 0.85); leg->Draw("same");
 
     TLatex *textAlice = AliceText(ispO); textAlice->Draw("same");
-    //padPull->cd();
-    //fixPullStyle(pullFrame);
-    //pullFrame->Draw();
-    //can->SetLogy();
+    padPull->cd();
+    fixPullStyle(pullFrame);
+    pullFrame->Draw();
+    TLine* linePull = new TLine(ws->var("mass")->getMin(), 0, ws->var("mass")->getMax(),0);
+    linePull->SetLineColor(kRed); linePull->SetLineStyle(2); linePull->Draw("same");
+    //padDist->SetLogy();
     //std::string pdfPath = "";
     can->SaveAs(Form("%s/massFitProj2D_%s.pdf", outDirName.c_str(), rangeLabel.c_str()));
 
     ///////tauz frame
+    padDist->cd();
     legendEntries.clear();
     ws->data("data")->plotOn(tauzFrame, Name("data"), DataError(RooAbsData::SumW2)); legendEntries["data"] = {"data","P"};
     ws->pdf("totPDF_2D")->plotOn(tauzFrame, Name("background"), Components(RooArgSet(*ws->pdf("tauzMassTotBkgPDF"))),DrawOption("F"), FillColor(kGray), LineColor(kGray)); legendEntries["background"] = {"Background", "F"};
@@ -228,9 +240,9 @@ map<string, double> SignalExtraction1Fit(map<string, string>& parIni, RooWorkspa
     //ws->pdf("totPDF_mass")->plotOn(tauzFrame, Name("tauzMassTotPsi2sPDF"), Components(RooArgSet(*ws->pdf("tauzMassTotPsi2sPDF"))),DrawOption("L"), LineColor(kBlue+4)); legendEntries["tauzMassTotPsi2sPDF"] = {"#psi(2S) signal","L"};
     ws->pdf("totPDF_2D")->plotOn(tauzFrame, Name("totPDF_2D"), LineColor(kRed)); legendEntries["totPDF_2D"] = {"total fit","L"};
     
-    //hpull = tauzFrame->pullHist();
-    //pullFrame = ws->var("tauz")->frame(Title("Pull Distribution"));
-    //pullFrame->addPlotable(hpull,"P");
+    RooHist* hpullTauz = tauzFrame->pullHist();
+    RooPlot* pullTauzFrame = ws->var("tauz")->frame(Title("Pull Distribution"));
+    pullTauzFrame->addPlotable(hpullTauz,"P");
     
     ws->data("data")->plotOn(tauzFrame, DataError(RooAbsData::SumW2));
     //padDist->cd();
@@ -239,14 +251,15 @@ map<string, double> SignalExtraction1Fit(map<string, string>& parIni, RooWorkspa
     TLatex* textVarTauz = varLatex(ws, parIni, fitMass, fitTauz, 0, 0, 0.57, 0.8); textVarTauz->Draw("same");
     TLatex* textCutTauz = cutLatex(ispO, cutVector, 0.15,0.6); textCutTauz->Draw("same");
     TLegend* legTauz = makePlotLegend(tauzFrame, legendEntries, 0.15, 0.7, 0.5, 0.85); legTauz->Draw("same");
-    textAlice->Draw("same");
+    TLatex *textAliceTauz = AliceText(ispO); textAliceTauz->Draw("same");
     
-    //padPull->cd();
-    //fixPullStyle(pullFrame);
-    //pullFrame->Draw();
-
+    padPull->cd();
+    fixPullStyle(pullTauzFrame);
+    pullTauzFrame->Draw();
+    TLine* linePullTauz = new TLine(ws->var("tauz")->getMin(), 0, ws->var("tauz")->getMax(),0);
+    linePullTauz->SetLineColor(kRed); linePullTauz->SetLineStyle(2); linePullTauz->Draw("same");
     //std::string pdfPath = "";
-    can->SetLogy();
+    padDist->SetLogy();
     can->SaveAs(Form("%s/tauzFitProj2D_%s.pdf", outDirName.c_str(), rangeLabel.c_str()));
   }
   
