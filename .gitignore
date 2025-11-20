@@ -1,0 +1,9 @@
+*.root
+data_shared/*.root
+performanceMetrics.json
+dpl-config.json
+*.pdf
+*.png
+*.DS_Store*
+*__pycache__*
+*~
