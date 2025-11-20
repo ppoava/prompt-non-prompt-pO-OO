@@ -20,7 +20,7 @@
 void signalExtraction(bool ispO=true, bool isMC =false, const char *caseName = "nominal", bool remakeDS =false, bool fitMass=true, bool fitTauz=false);
 void plotResult(const char *caseName = "nominal", string axisName = "pt", int incMinCent=0, int incMaxCent=100, float incMinPt=0., float incMaxPt=50., float incMinRap=-3.5, float incMaxRap=-2.5, float incMinChi2=0, float incMaxChi2=50);
 
-void InputToResults(bool plotResults = false, bool ispO=false, bool isMC=false, const char *caseName = "nominal", bool remakeDS = false, bool fitMass1D=false, bool fitTauz1D=false, bool fit2D=true) {
+void InputToResults(bool ispO=false, bool isMC=false, const char *caseName = "nominal", bool remakeDS = false, bool fitMass1D=false, bool fitTauz1D=false, bool fit2D=true, bool plotResults = false) {
   gSystem->Load("RooExtCBShape.cxx+");
   //cout<<"plotResults = "<<plotResults<<endl;
   if (fitMass1D)
