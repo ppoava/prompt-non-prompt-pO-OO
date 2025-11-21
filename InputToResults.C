@@ -25,9 +25,9 @@ void InputToResults(bool ispO=false, bool isMC=false, const char *caseName = "no
   //cout<<"plotResults = "<<plotResults<<endl;
   if (fitMass1D)
     signalExtraction(ispO, isMC, caseName, remakeDS, true, false);
-  else if (fitTauz1D)
+  if (fitTauz1D)
     signalExtraction(ispO, isMC, caseName, remakeDS, false, true);
-  else if (fit2D)
+  if (fit2D)
     signalExtraction(ispO, isMC, caseName, remakeDS, true, true);
   
 
@@ -56,6 +56,7 @@ void signalExtraction(bool ispO, bool isMC, const char *caseName, bool remakeDS,
   if (!addParameters(Form("inputFiles/initialPars_%s_%s_%s.txt", fitMass?"mass":"tauz", ispO?"pO":"OO", caseName), cutVector, parIniVector)) { return; } //if 1D fit on mass or tauz it reads the corresponding file, if it's 2D it reads the mass but the other variables get added from the default values and then they are fixed
   
   string outputName = Form("output/output_fit%s%s_%s%s_%s.root", fitMass?"Mass":"", fitTauz?"Tauz":"", ispO?"pO":"OO", isMC?"_MC":"", caseName);
+  if (gSystem->AccessPathName("output")) gSystem->mkdir("output", true);
   std::ifstream fileCheck(outputName.c_str());
   bool fileExists = fileCheck.good();
   fileCheck.close();
@@ -122,11 +123,6 @@ void signalExtraction(bool ispO, bool isMC, const char *caseName, bool remakeDS,
 			 cutVector[j].chi2.Max,
 			 cutVector[j].chi2.Min,
 			 cutVector[j].chi2.Max);
-			 // don't forget the SS cut
-    /*
-    string dsCuts = Form("pt > %f && pt < %f",
-			 cutVector[j].pt.Min,
-			 cutVector[j].pt.Max);*/
     cout<<"cutting on "<<dsCuts<<endl;
     
     RooWorkspace* ws = new RooWorkspace(Form("ws_fit%s%s_%s", fitMass?"Mass":"", fitTauz?"Tauz":"", rangeLabel.c_str()));
@@ -140,13 +136,6 @@ void signalExtraction(bool ispO, bool isMC, const char *caseName, bool remakeDS,
     if (fitTauz && !fitMass && !isMC) { //import the sPlot datasets
       string sPlotFileName = Form("output/output_fitMass_%s_%s.root", ispO?"pO":"OO", caseName);
       TFile* sPlotFile = TFile::Open(sPlotFileName.c_str());
-      /*cout<<"[INFO] opening the sPlot file "<<sPlotFileName<<endl;
-      sPlotFile->ls();
-      cout<<"[INFO] looking for ws " <<Form("ws_%s", rangeLabel.c_str())<<endl;
-      RooWorkspace* ws_sPlot = (RooWorkspace*) sPlotFile->Get(Form("ws_%s", rangeLabel.c_str()));
-      cout<<"[INFO] opening the sPlot workspace "<<endl;
-      ws_sPlot->Print();
-      RooDataSet* sPlotDs = (RooDataSet*) ws_sPlot->data("data")->reduce(Form("%s", dsCuts.c_str()));*/
       RooDataSet* sPlotDs = (RooDataSet*) sPlotFile->Get(Form("sPlotDS_%s", rangeLabel.c_str()));
       sPlotDs = (RooDataSet*) sPlotDs->reduce(Form("%s", dsCuts.c_str()));
       RooDataSet* sPlotDsS = (RooDataSet*) sPlotDs->reduce("fJpsi_mass_sw > 0 && fJpsi_mass_sw < 50");
@@ -154,7 +143,6 @@ void signalExtraction(bool ispO, bool isMC, const char *caseName, bool remakeDS,
       
       cout<<"[INFO] found and reduced the sPlot"<<endl;
       
-      //sPlotFile->Get(Form("sPlot_fitMass_%s", rangeLabel.c_str()))->reduce(Form("%s", dsCuts.c_str()));
       const RooArgSet* varSet = sPlotDs->get();
       RooDataSet* sPlotDsSig = new RooDataSet("sPlotDsSig", "Signal-weighted dataset", sPlotDsS, *varSet, 0, "fJpsi_mass_sw");
       RooDataSet* sPlotDsBkg = new RooDataSet("sPlotDsBkg", "Background-weighted dataset", sPlotDsB, *varSet, 0, "fBkg_mass_sw");
@@ -163,9 +151,7 @@ void signalExtraction(bool ispO, bool isMC, const char *caseName, bool remakeDS,
     }
     
     resultsFit.clear();
-    //ws->Print();
     resultsFit = SignalExtraction1Fit(parIniVector[j], ws, caseName, rangeLabel, ispO, isMC, fitMass, fitTauz, cutVector[j]);
-    //ws->Print();
     resultsFit["centMin"] = cutVector[j].cent.Start;
     resultsFit["centMax"] = cutVector[j].cent.End;
     resultsFit["ptMin"] = cutVector[j].pt.Min;
@@ -206,8 +192,6 @@ void signalExtraction(bool ispO, bool isMC, const char *caseName, bool remakeDS,
     }
     
     fSave->cd();
-    //ws->Print();
-    //ws->Write(Form("ws_%s", rangeLabel.c_str()));//, TObject::kOverwrite);
     if (fitMass && !fitTauz) ws->data("data_sPlot")->Write(Form("sPlotDS_%s", rangeLabel.c_str()));
     resTree->Write(Form("tree_%s", rangeLabel.c_str()));//, TObject::kOverwrite);
   }
