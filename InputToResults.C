@@ -14,19 +14,24 @@
 #include <TDirectory.h>
 #include <TROOT.h>
 #include <TKey.h>
+#include <TLatex.h>
 
 #include "SignalExtraction.C"
 
 void signalExtraction(bool ispO=true, bool isMC =false, const char *caseName = "nominal", bool remakeDS =false, bool fitMass=true, bool fitTauz=false);
-void plotResult(const char *caseName = "nominal", string axisName = "pt", int incMinCent=0, int incMaxCent=100, float incMinPt=0., float incMaxPt=50., float incMinRap=-3.5, float incMaxRap=-2.5, float incMinChi2=0, float incMaxChi2=50);
+void plotResult(bool ispO=true, const char *caseName = "nominal", string axisName = "pt", int incMinCent=0, int incMaxCent=100, float incMinPt=0., float incMaxPt=50., float incMinRap=-3.5, float incMaxRap=-2.5, float incMinChi2=0, float incMaxChi2=50);
 
-void InputToResults(bool ispO=false, bool isMC=false, const char *caseName = "nominal", bool remakeDS = false, bool fitMass1D=false, bool fitTauz1D=false, bool fit2D=true, bool plotResults = false) {
+void InputToResults(bool ispO=true, bool isMC=false, const char *caseName = "nominal", bool remakeDS = false, bool fitMass1D=false, bool fitTauz1D=false, bool fit2D=false, bool plotResults = true) {
   gSystem->Load("RooExtCBShape.cxx+");
   //cout<<"plotResults = "<<plotResults<<endl;
-  if (fitMass1D)
+  if (fitMass1D) {
     signalExtraction(ispO, isMC, caseName, remakeDS, true, false);
-  if (fitTauz1D)
+    remakeDS=false;
+  }
+  if (fitTauz1D) {
     signalExtraction(ispO, isMC, caseName, remakeDS, false, true);
+    remakeDS=false;
+  }
   if (fit2D)
     signalExtraction(ispO, isMC, caseName, remakeDS, true, true);
   
@@ -36,12 +41,12 @@ void InputToResults(bool ispO=false, bool isMC=false, const char *caseName = "no
     int maxCent = 100;
     float minPt = 0.;
     float maxPt = 20.;
-    float minRap = -3.5;
-    float maxRap = -2.6;
+    float minRap = 2.5;//-3.5;
+    float maxRap = 3.6;//-2.6;
     float minChi2 = 0;
     float maxChi2 = 50;
     string axisName = "pt";
-    plotResult(caseName, axisName.c_str(), minCent, maxCent, minPt, maxPt, minRap, maxRap, minChi2, maxChi2);
+    plotResult(ispO, caseName, axisName.c_str(), minCent, maxCent, minPt, maxPt, minRap, maxRap, minChi2, maxChi2);
   }
   
 }
@@ -199,7 +204,7 @@ void signalExtraction(bool ispO, bool isMC, const char *caseName, bool remakeDS,
 }
 
 
-void plotResult(const char *caseName, string axisName, int incMinCent, int incMaxCent, float incMinPt, float incMaxPt, float incMinRap, float incMaxRap, float incMinChi2, float incMaxChi2){
+void plotResult(bool ispO, const char *caseName, string axisName, int incMinCent, int incMaxCent, float incMinPt, float incMaxPt, float incMinRap, float incMaxRap, float incMinChi2, float incMaxChi2){
   cout <<"[INFO] The plotting function is yet to be done"<<endl;
   gStyle->SetOptStat(0);
   
@@ -213,7 +218,8 @@ void plotResult(const char *caseName, string axisName, int incMinCent, int incMa
   double *resErr_pr = new double[100];
   double *resErr_npr = new double[100];
   
-  string fileName = Form("output/output_%s.root",caseName);
+  //string fileName = Form("output/output_%s.root",caseName);
+  string fileName = Form("output/output_fitMassTauz_%s_%s.root", ispO?"pO":"OO", caseName);
   TFile* fHist = TFile::Open(fileName.c_str(),"READ");
   if (!fHist || fHist->IsZombie()) {
     cout<<"[ERROR] Problem with the result file that contains all the histograms"<<fileName<<endl;
@@ -230,7 +236,7 @@ void plotResult(const char *caseName, string axisName, int incMinCent, int incMa
     if (cl->InheritsFrom("TTree")) {
       TTree *resTree = (TTree*) key->ReadObj();//fHist->Get(key->GetName());
       
-      cout<<"[INFO] Reading the input tree"<<resTree->GetName()<<endl;
+      cout<<"[INFO] Reading the input tree "<<resTree->GetName()<<endl;
 
       double centMin = 0.; resTree->SetBranchAddress("centMin", &centMin);
       double centMax = 0.; resTree->SetBranchAddress("centMax", &centMax);
@@ -243,7 +249,7 @@ void plotResult(const char *caseName, string axisName, int incMinCent, int incMa
       
       double fb_jpsi = 0.; resTree->SetBranchAddress("b_jpsi_tauzMass", &fb_jpsi);
       double fb_jpsi_err = 0.; resTree->SetBranchAddress("b_jpsi_tauzMass_err", &fb_jpsi_err);
-      double N_jpsi = 0.; resTree->SetBranchAddress("fJpsi_tauzMass_jpsi", &N_jpsi);
+      double N_jpsi = 0.; resTree->SetBranchAddress("fJpsi_tauzMass", &N_jpsi);
       double N_jpsi_err = 0.; resTree->SetBranchAddress("fJpsi_tauzMass_err", &N_jpsi_err);
       /*
       double fb_psi2s = 0.; resTree->SetBranchAddress("b_psi2s_tauzMass", &fb_psi2s);
@@ -253,11 +259,14 @@ void plotResult(const char *caseName, string axisName, int incMinCent, int incMa
       */
       
       resTree->GetEntry(0);
-      
+
+      cout<<"[INFO] This tree has the following bin selection, getting the results for pt ["<<ptMin<<"-"<<ptMax<<"], rap ["<<rapMin<<"-"<<rapMax<<"], cent ["<<centMin<<"-"<<centMax<<"], chi2 ["<<chi2Min<<"-"<<chi2Max<<"]"<<endl;
       if (axisName.find("centrality")!=std::string::npos) { //if plotting as function of centrality, the centrality of the result needs to be in the range but the pt need to be the exact edges
 	
         if (centMin < incMinCent || centMax > incMaxCent)
           continue;
+	if (fabs(centMin - incMinCent)<0.00001 && fabs(centMax - incMaxCent)<0.00001)
+	  continue;
         if (fabs(ptMin - incMinPt)>0.00001 || fabs(ptMax - incMaxPt)>0.00001)
           continue;
         if (fabs(rapMin - incMinRap)>0.00001 || fabs(rapMax - incMaxRap)>0.00001)
@@ -265,43 +274,57 @@ void plotResult(const char *caseName, string axisName, int incMinCent, int incMa
 	if (fabs(chi2Min - incMinChi2)>0.00001 || fabs(chi2Max - incMaxChi2)>0.00001)
 	  continue;
       
-	cout<<"[INFO] This tree passed the bin selection, getting the results for pt ["<<ptMin<<"-"<<ptMax<<"], ptAssoc ["<<rapMin<<"-"<<rapMax<<"], cent ["<<centMin<<"-"<<centMax<<"]"<<endl;
+	//cout<<"[INFO] This tree passed the bin selection, getting the results for pt ["<<ptMin<<"-"<<ptMax<<"], rap ["<<rapMin<<"-"<<rapMax<<"], cent ["<<centMin<<"-"<<centMax<<"]"<<endl;
 	binEdges[iBin] = centMin;
-	lastEdge =centMax;
+	lastEdge = centMax;
       }//end of if centrality
       else if (axisName.find("pt")!=std::string::npos) {
         if (ptMin < incMinPt || ptMax > incMaxPt)
           continue;
+	if (fabs(ptMin - incMinPt) < 0.00001 && fabs(ptMax - incMaxPt) <0.00001)
+	  continue;
         if (fabs(centMin - incMinCent)>0.00001 || fabs(centMax - incMaxCent)>0.00001)
           continue;
         if (fabs(rapMin - incMinRap)>0.00001 || fabs(rapMax - incMaxRap)>0.00001)
           continue;
 	if (fabs(chi2Min - incMinChi2)>0.00001 || fabs(chi2Max - incMaxChi2)>0.00001)
 	  continue;
+
+	//cout<<"[INFO] This tree passed the bin selection, getting the results for pt ["<<ptMin<<"-"<<ptMax<<"], rap ["<<rapMin<<"-"<<rapMax<<"], cent ["<<centMin<<"-"<<centMax<<"]"<<endl;
+		
 	binEdges[iBin] = ptMin;
 	lastEdge = ptMax;
       }//end of if pt
       else if (axisName.find("rap")!=std::string::npos) {
 	if (rapMin < incMinRap || rapMax > incMaxRap)
           continue;
+	if (fabs(rapMin - incMinRap)<0.00001 && fabs(rapMax - incMaxRap)<0.00001)
+	  continue;
         if (fabs(centMin - incMinCent)>0.00001 || fabs(centMax - incMaxCent)>0.00001)
           continue;
         if (fabs(ptMin - incMinPt)>0.00001 || fabs(ptMax - incMaxPt)>0.00001)
           continue;
 	if (fabs(chi2Min - incMinChi2)>0.00001 || fabs(chi2Max - incMaxChi2)>0.00001)
 	  continue;
+
+	//cout<<"[INFO] This tree passed the bin selection, getting the results for pt ["<<ptMin<<"-"<<ptMax<<"], rap ["<<rapMin<<"-"<<rapMax<<"], cent ["<<centMin<<"-"<<centMax<<"]"<<endl;
+	
 	binEdges[iBin] = rapMin;
 	lastEdge = rapMax;
       }//end of rap
       else if (axisName.find("chi2")!=std::string::npos) {
 	if (chi2Min < incMinChi2 || chi2Max > incMaxChi2)
           continue;
+	if (fabs(chi2Min - incMinChi2)<0.00001 && fabs(chi2Max - incMaxChi2)<0.00001)
+	  continue;
         if (fabs(centMin - incMinCent)>0.00001 || fabs(centMax - incMaxCent)>0.00001)
           continue;
         if (fabs(rapMin - incMinRap)>0.00001 || fabs(rapMax - incMaxRap)>0.00001)
           continue;
 	if (fabs(ptMin - incMinPt)>0.00001 || fabs(ptMax - incMaxPt)>0.00001)
 	  continue;
+	//cout<<"[INFO] This tree passed the bin selection, getting the results for pt ["<<ptMin<<"-"<<ptMax<<"], rap ["<<rapMin<<"-"<<rapMax<<"], cent ["<<centMin<<"-"<<centMax<<"]"<<endl;
+	
 	binEdges[iBin] = chi2Min;
 	lastEdge = chi2Max;
       }//end of chi2
@@ -319,10 +342,7 @@ void plotResult(const char *caseName, string axisName, int incMinCent, int incMa
 
   //cout<<"iBin"
   binEdges[iBin] = lastEdge;
-  
-  TCanvas *c1 = new TCanvas("c1", "", 800, 800);
-  c1->cd();
-    
+      
   nbins = iBin;
   TH1D* results_fb = new TH1D(Form("results_fb_%s", axisName.c_str()), "", nbins, binEdges);
 
@@ -354,7 +374,6 @@ void plotResult(const char *caseName, string axisName, int incMinCent, int incMa
   else if (axisName.find("chi2")!=std::string::npos) {
     results_fb->GetXaxis()->SetTitle("#chi^{2}_{matching}"); 
   }
-
   TH1D* results_pr = (TH1D*) results_fb->Clone(Form("results_pr_%s", axisName.c_str()));
   TH1D* results_npr = (TH1D*) results_fb->Clone(Form("results_npr_%s", axisName.c_str()));
 
@@ -385,12 +404,38 @@ void plotResult(const char *caseName, string axisName, int incMinCent, int incMa
 			  (int) incMaxCent,
 			  (int) incMinChi2,
 			  (int) incMaxChi2);
-  
+
+
+  TCanvas *cfb = new TCanvas("cfb", "", 800, 800);
+  cfb->cd();
   results_fb->Draw("E1");
-  c1->SaveAs(Form("output/results_FB_%s_%s.pdf",caseName,rangeName.c_str()));
+  
+  float xText=0.5; float yText=0.5;
+  
+  TLatex* textAlice_fb = AliceText(ispO);
+  TLatex* textCut_fb = cutTextResult(ispO, axisName,xText, yText, incMinCent, incMaxCent, incMinPt, incMaxPt, incMaxRap, incMinRap, incMinChi2, incMaxChi2);
+  textAlice_fb->Draw();
+  textCut_fb->Draw();
+  cfb->SaveAs(Form("output/results_%s_FB_vs%s_%s%s.pdf", ispO?"pO":"OO", axisName.c_str(), caseName, rangeName.c_str()));
+
+  
+  TCanvas *cpr = new TCanvas("cpr", "", 800, 800);
+  cpr->cd();
   results_pr->Draw("E1");
-  c1->SaveAs(Form("output/results_PR_%s_%s.pdf",caseName,rangeName.c_str()));
+  TLatex* textAlice_pr = AliceText(ispO);
+  TLatex* textCut_pr = cutTextResult(ispO, axisName,xText, yText, incMinCent, incMaxCent, incMinPt, incMaxPt, incMaxRap, incMinRap, incMinChi2, incMaxChi2);
+  textAlice_pr->Draw();
+  textCut_pr->Draw("same");
+  cpr->SaveAs(Form("output/results_%s_PR_vs%s_%s%s.pdf", ispO?"pO":"OO", axisName.c_str(), caseName, rangeName.c_str()));
+
+  TCanvas *cnpr = new TCanvas("cnpr", "", 800, 800);
+  cnpr->cd();
   results_npr->Draw("E1");
-  c1->SaveAs(Form("output/results_NPR_%s_%s.pdf",caseName,rangeName.c_str()));
+  TLatex* textAlice_npr = AliceText(ispO);
+  TLatex* textCut_npr = cutTextResult(ispO, axisName,xText, yText, incMinCent, incMaxCent, incMinPt, incMaxPt, incMaxRap, incMinRap, incMinChi2, incMaxChi2);
+  textAlice_npr->Draw("same");
+  textCut_npr->Draw("same");
+  cnpr->SaveAs(Form("output/results_%s_NPR_vs%s_%s%s.pdf", ispO?"pO":"OO", axisName.c_str(), caseName, rangeName.c_str()));
+  
   fHist->Close();
 }

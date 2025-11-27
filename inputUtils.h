@@ -91,7 +91,7 @@ RooDataSet* createDataset(bool ispO, bool isMC) {
   RooRealVar* pt = new RooRealVar("pt","p_{T, #mu^{+}#mu^{-}}", 0, 20, "GeV/c");
   RooRealVar* y = new RooRealVar("y","y_{#mu^{+}#mu^{-}}", -5, -2);
   RooRealVar* sign = new RooRealVar("sign","dimuon sign", -3, 3);
-  RooRealVar* tauz = new RooRealVar("tauz", "#tau_{z,#mu^{+}#mu^{-}}", -0.03, 0.03);
+  RooRealVar* tauz = new RooRealVar("tauz", "#tau_{z,#mu^{+}#mu^{-}}", -0.07, 0.07);
   RooRealVar* chi2_1 = new RooRealVar("chi2_1","#chi^{2}_{1, #mu^{+}#mu^{-}}", 0, 1000);
   RooRealVar* chi2_2 = new RooRealVar("chi2_2","#chi^{2}_{2, #mu^{+}#mu^{-}}", 0, 1000);
   RooArgSet* varSet = new RooArgSet(*mass, *pt, *y, *sign, *tauz, *chi2_1, *chi2_2);
@@ -107,7 +107,7 @@ RooDataSet* createDataset(bool ispO, bool isMC) {
 			   (TMath::Sqrt(fMass * fMass + fPt * fPt)));
     
     if (fMass<2 || fMass>4) continue;
-    if (fTauz<-0.03 || fTauz>0.03) continue;
+    if (fTauz<-0.07 || fTauz>0.07) continue;
     // apply acceptance cuts
     if (fEta1<-3.6 || fEta1>-2.5) continue;
     if (fEta2<-3.6 || fEta2>-2.5) continue;

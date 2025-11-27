@@ -204,14 +204,45 @@ TLatex *cutLatex (bool ispO, struct KinCuts cutVector, float xText, float yText)
   textCut->SetTextFont(43);
   textCut->SetTextSize(20); // Size in pixel height
   textCut->DrawLatex(xText, yText, Form("%g < p_{T} < %g GeV", cutVector.pt.Min,cutVector.pt.Max)); yText = yText-0.04;
-  textCut->DrawLatex(xText, yText, Form("%g < y < %g", cutVector.rap.Min,cutVector.rap.Max)); yText = yText-0.04;
+  textCut->DrawLatex(xText, yText, Form("%g < y < %g", -1*cutVector.rap.Max,-1*cutVector.rap.Min)); yText = yText-0.04;
   textCut->DrawLatex(xText, yText, Form("%g < #chi^{2}_{matching} < %g", cutVector.chi2.Min,cutVector.chi2.Max)); yText = yText-0.04;
   if (!ispO)
-    textCut->DrawLatex(xText, yText, Form("%d < cent < %d %%", cutVector.cent.Start ,cutVector.cent.End)); yText = yText-0.04;
+    textCut->DrawLatex(xText, yText, Form("%d < cent < %d %%", cutVector.cent.Start ,cutVector.cent.End)); //yText = yText-0.04;
   
     return textCut;
 }
 
+TLatex* cutTextResult(bool ispO, string axisName, float xText, float yText, float incMinCent, float incMaxCent, float incMinPt, float incMaxPt, float incMaxRap, float incMinRap, float incMinChi2, float incMaxChi2) {
+    TLatex* textCut = new TLatex();
+  textCut->SetNDC();
+  textCut->SetTextAlign(12);
+  textCut->SetTextFont(43);
+  textCut->SetTextSize(20); // Size in pixel height
+
+  if (!(axisName.find("centrality")!=std::string::npos) && !ispO) {
+    textCut->DrawLatex(xText, yText, Form("%d < cent < %d %%", (int) incMinCent, (int) incMaxCent));
+    cout<<"adding cent to the label"<<endl;
+    yText = yText-0.04;
+  }
+  if (!(axisName.find("pt")!=std::string::npos)){
+    if (incMinPt==0)
+      textCut->DrawLatex(xText, yText, Form("p_{T} < %g GeV", incMaxPt));
+    else
+      textCut->DrawLatex(xText, yText, Form("%g < p_{T} < %g GeV", incMinPt, incMaxPt));
+    cout<<"adding pt to the label"<<endl;
+    yText = yText-0.04;
+  }
+  if (!(axisName.find("rap")!=std::string::npos)) {
+    textCut->DrawLatex(xText, yText, Form("%g < y < %g", -1*incMaxRap, -1*incMinRap));
+    cout<<"adding rap to the label"<<endl;
+    yText = yText-0.04;
+  }
+  if (!(axisName.find("chi2")!=std::string::npos)) {
+    textCut->DrawLatex(xText, yText, Form("%g < #chi^{2}_{matching} < %g", incMinChi2, incMaxChi2));
+    yText = yText-0.04;
+  }
+  return textCut;
+}
 TLegend* makePlotLegend(RooPlot* frame, map<string, vector<string>> legendEntries, double xmin, double ymin, double xmax, double ymax) {
   TLegend *legend_lines = new TLegend(xmin, ymin, xmax, ymax); // Define the legend position and size
   legend_lines->SetBorderSize(0);
