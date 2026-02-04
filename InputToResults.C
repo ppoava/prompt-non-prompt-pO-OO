@@ -110,8 +110,8 @@ void signalExtraction(bool ispO, bool isMC, const char *caseName, bool remakeDS,
     }
     
     std::string rangeLabel = Form("pt_%d_%d_rap_%d_%d_cent_%d_%d_chi2_%d_%d",
-				  (int) cutVector[j].pt.Min,
-				  (int) cutVector[j].pt.Max,
+				  (int) (10*cutVector[j].pt.Min),
+				  (int) (10*cutVector[j].pt.Max),
 				  (int) (10*cutVector[j].rap.Min),
 				  (int) (10*cutVector[j].rap.Max),			    
 				  (int) cutVector[j].cent.Start,
@@ -397,8 +397,8 @@ void plotResult(bool ispO, const char *caseName, string axisName, int incMinCent
   }
 
   string rangeName = Form("_pt_%d_%d_rap_%d_%d_cent_%d_%d_chi2_%d_%d",
-			  (int) incMinPt,
-			  (int) incMaxPt,
+			  (int) (10*incMinPt),
+			  (int) (10*incMaxPt),
 			  (int) (10*incMinRap),
 			  (int) (10*incMaxRap),
 			  (int) incMinCent,
