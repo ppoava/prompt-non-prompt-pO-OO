@@ -148,6 +148,8 @@ void buildPDF_mass(RooWorkspace* ws, map<string, string> parIni, bool isMC){
 }
 
 void buildPDF_tauzRes(RooWorkspace* ws, map<string, string> parIni){
+  // RooRealVar xMaxRes("xMaxRes", "xMaxRes", 0, -0.02, 0.02);
+  // ws->import(xMaxRes);
   if (parIni["model_tauzRes"]=="extCB") {
     ws->factory("RooExtCBShape::tauzResPDF(tauz, mean_tauzRes, sigma_tauzRes, alpha_tauzRes, n_tauzRes, alpha_tauzRes, n_tauzRes)");
   }
@@ -261,6 +263,7 @@ void setDefaultParameters(map<string, string>& parIni, double nEntriesDS){
   varMap["c3_mass"] = {0,-2,2};
   varMap["c4_mass"] = {0,-2,2};
   
+  varMap["xMaxRes"] = {0, -0.02, 0.02};
   varMap["mean_tauzRes"] = {0,-0.1,0.1};
   varMap["sigma_tauzRes"] = {0.00045,0.0002,0.0010};
   varMap["alpha_tauzRes"] = {1,0.,3};
@@ -388,22 +391,62 @@ void fixParPDF(RooWorkspace* ws, RooFitResult* fitResult, map<string, string> &p
   }
 
   
+  // TODO: add mc labels in file names
   if (!fitResult) {
-    cout<<"[INFO] fixing parameters from previous fits"<<endl;
-    string resFileName = Form("output/output_fitMass_%s_%s.root", ispO?"pO":"OO", /*isMC?"_MC":"",*/ caseName);
-    TFile* resFile =  TFile::Open(resFileName.c_str(),"READ");
-    TTree* resTree = (TTree*) resFile->Get(Form("tree_%s", rangeLabel.c_str()));
+    cout << "[INFO] fixing parameters from previous fits" << endl;
+
+    string resFileName;
+
+    if (fromMassPDF) { resFileName = Form("output/output_fitMass_%s_%s.root", ispO ? "pO" : "OO", caseName); }
+    else if (fromTauzResPDF || fromTauzBkgPDF) { resFileName = Form("output/output_fitTauz_%s_%s.root", ispO ? "pO" : "OO", caseName); }
+    else { cout << "[ERROR] No parameter source selected in fixParPDF()" << endl; return; }
+
+    cout << "[INFO] Reading parameters from: " << resFileName << endl;
+    TFile* resFile = TFile::Open(resFileName.c_str(), "READ");
+    if (!resFile || resFile->IsZombie()) { cout << "[ERROR] Could not open file: " << resFileName << endl; return; }
+
+    TTree* resTree = (TTree*)resFile->Get(Form("tree_%s", rangeLabel.c_str()));
+    if (!resTree) { cout << "[ERROR] Could not find tree_" << rangeLabel << " in " << resFileName << endl; resFile->Close(); return; }
+
     std::map<std::string, double> fixValues;
+
     for (const auto& par : fixedPars) {
-      fixValues[par] = 0.0;
-      resTree->SetBranchAddress(par.c_str(), &fixValues[par]);
+        fixValues[par] = 0.0;
+
+        if (resTree->GetBranch(par.c_str())) { resTree->SetBranchAddress(par.c_str(), &fixValues[par]); }
+        else {
+            cout << "[ERROR] Parameter "
+                << par
+                << " not found in "
+                << resFileName << endl;
+        }
     }
+
     resTree->GetEntry(0);
+
     for (const auto& [name, val] : fixValues) {
-      ws->var(name.c_str())->setVal(val);
-      ws->var(name.c_str())->setConstant(kTRUE);
+        RooRealVar* var = ws->var(name.c_str());
+
+        if (!var) {
+            cout << "[ERROR] Variable "
+                << name
+                << " not found in workspace" << endl;
+            continue;
+        }
+
+        cout << "[INFO] Fixing "
+            << name
+            << " = "
+            << val
+            << endl;
+
+        var->setVal(val);
+        var->setConstant(kTRUE);
     }
+
+    resFile->Close();
   }
+
   else if (fitResult) {
     fitResult->Print();
     for (const auto& par : fixedPars) {
